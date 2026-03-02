@@ -47,3 +47,33 @@ class CompanyBrief(BaseModel):
     keyword_map: KeywordMap
     competitor_set: List[Competitor] = Field(description="5–15 direct and adjacent competitors")
     metadata: Metadata
+
+
+# ---------------------------------------------------------------------------
+# Agent 2: Subreddit Finder models
+# ---------------------------------------------------------------------------
+
+class Subreddit(BaseModel):
+    name: str                   # "r/entrepreneur"
+    url: str                    # "https://reddit.com/r/entrepreneur"
+    subscribers: int            # from PRAW (0 if unavailable)
+    relevance_score: int        # 1–10
+    relevance_reason: str       # 1–2 sentences
+    icp_fit: str                # "high" | "medium" | "low"
+    content_themes: List[str]   # 3–5 items
+    posting_rules: List[str]    # key rules for marketers
+    self_promo_allowed: bool
+    engagement_level: str       # "high" | "medium" | "low"
+
+
+class SubredditMapMetadata(BaseModel):
+    domain: str
+    generated_at: str
+    candidates_discovered: int
+    candidates_enriched: int
+    sources: List[str]
+
+
+class SubredditMap(BaseModel):
+    subreddits: List[Subreddit]
+    metadata: SubredditMapMetadata
