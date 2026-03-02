@@ -10,3 +10,8 @@ venv/
 dist/
 build/
 .pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
