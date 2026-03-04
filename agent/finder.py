@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-import praw
+import requests
 from google import genai
 from google.genai import types
 
@@ -22,20 +23,11 @@ def _get_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
-def _get_reddit() -> praw.Reddit:
-    client_id = os.environ.get("REDDIT_CLIENT_ID")
-    client_secret = os.environ.get("REDDIT_CLIENT_SECRET")
-    if not client_id or not client_secret:
-        raise EnvironmentError(
-            "REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET must be set in .env. "
-            "Create a Reddit 'script' app at https://www.reddit.com/prefs/apps"
-        )
-    return praw.Reddit(
-        client_id=client_id,
-        client_secret=client_secret,
-        user_agent="RelioBot/1.0 (by /u/relio_ai_bot)",
-        read_only=True,
-    )
+def _get_session() -> requests.Session:
+    """Build a session for unauthenticated access to Reddit's public JSON API."""
+    session = requests.Session()
+    session.headers.update({"User-Agent": "RelioBot/1.0"})
+    return session
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +48,7 @@ def _extract_subreddit_names(text: str) -> list[str]:
 
 
 @dataclass
-class PRAWSubredditData:
+class SubredditData:
     name: str
     url: str
     subscribers: int
@@ -65,44 +57,58 @@ class PRAWSubredditData:
     accessible: bool = True
 
 
-def _enrich_subreddit(reddit: praw.Reddit, name: str) -> PRAWSubredditData:
-    """Fetch subreddit metadata via PRAW. Returns inaccessible record on any error."""
+def _enrich_subreddit(session: requests.Session, name: str) -> SubredditData:
+    """Fetch subreddit metadata via Reddit's public JSON API (no auth required)."""
+    _inaccessible = SubredditData(
+        name=f"r/{name}", url="", subscribers=0,
+        public_description="", rules=[], accessible=False,
+    )
     try:
-        results = reddit.subreddits.search_by_name(name, exact=True)
-        if not results:
-            return PRAWSubredditData(
-                name=f"r/{name}", url="", subscribers=0,
-                public_description="", rules=[], accessible=False,
-            )
+        about_resp = session.get(
+            f"https://www.reddit.com/r/{name}/about.json",
+            timeout=10,
+        )
+        if about_resp.status_code == 404:
+            return _inaccessible
+        about_resp.raise_for_status()
 
-        sub = results[0]
-        subscribers = sub.subscribers or 0
-        public_description = (sub.public_description or "")[:500]
+        data = about_resp.json().get("data", {})
+        kind = about_resp.json().get("kind", "")
+        if kind != "t5" or not data:
+            return _inaccessible
+
+        display_name = data.get("display_name", name)
+        subscribers = data.get("subscribers", 0) or 0
+        public_description = (data.get("public_description") or "")[:500]
 
         rules: list[str] = []
         try:
-            for rule in sub.rules:
-                short_desc = (rule.short_name or rule.description or "")[:200].strip()
-                if short_desc:
-                    rules.append(short_desc)
-                if len(rules) >= 10:
-                    break
+            time.sleep(0.5)  # brief pause between requests to the same sub
+            rules_resp = session.get(
+                f"https://www.reddit.com/r/{name}/about/rules.json",
+                timeout=10,
+            )
+            if rules_resp.status_code == 200:
+                for rule in rules_resp.json().get("rules", []):
+                    short = (rule.get("short_name") or rule.get("description") or "")[:200].strip()
+                    if short:
+                        rules.append(short)
+                    if len(rules) >= 10:
+                        break
         except Exception:
             pass
 
-        return PRAWSubredditData(
-            name=f"r/{sub.display_name}",
-            url=f"https://reddit.com/r/{sub.display_name}",
+        time.sleep(1.0)  # rate-limit: ~1 req/s across subreddits
+        return SubredditData(
+            name=f"r/{display_name}",
+            url=f"https://reddit.com/r/{display_name}",
             subscribers=subscribers,
             public_description=public_description,
             rules=rules,
             accessible=True,
         )
     except Exception:
-        return PRAWSubredditData(
-            name=f"r/{name}", url="", subscribers=0,
-            public_description="", rules=[], accessible=False,
-        )
+        return _inaccessible
 
 
 # ---------------------------------------------------------------------------
@@ -201,14 +207,14 @@ def run_discovery_phase(
 
 
 # ---------------------------------------------------------------------------
-# Phase 3: PRAW Enrichment
+# Phase 3: scrapi-reddit Enrichment
 # ---------------------------------------------------------------------------
 
 def run_enrichment_phase(
-    reddit: praw.Reddit, discovery_text: str
-) -> tuple[list[PRAWSubredditData], int]:
+    session: requests.Session, discovery_text: str
+) -> tuple[list[SubredditData], int]:
     """
-    Phase 3: Extract subreddit names from discovery text, enrich via PRAW.
+    Phase 3: Extract subreddit names from discovery text, enrich via public Reddit JSON API.
     Returns (accessible_subreddits, total_candidates_count).
     """
     candidates = _extract_subreddit_names(discovery_text)
@@ -216,9 +222,9 @@ def run_enrichment_phase(
     suffix = "..." if len(candidates) > 10 else ""
     print(f"[Phase 3] Discovered {len(candidates)} candidate subreddits: {preview}{suffix}")
 
-    enriched: list[PRAWSubredditData] = []
+    enriched: list[SubredditData] = []
     for name in candidates:
-        data = _enrich_subreddit(reddit, name)
+        data = _enrich_subreddit(session, name)
         if data.accessible:
             enriched.append(data)
             print(f"[Phase 3]   ✓ r/{name}: {data.subscribers:,} subscribers")
@@ -228,9 +234,9 @@ def run_enrichment_phase(
     return enriched, len(candidates)
 
 
-def _format_praw_block(enriched: list[PRAWSubredditData]) -> str:
-    """Format PRAW data as a readable text block for the structuring prompt."""
-    lines = ["=== REAL SUBREDDIT DATA FROM PRAW ===\n"]
+def _format_enriched_block(enriched: list[SubredditData]) -> str:
+    """Format scraped subreddit data as a readable text block for the structuring prompt."""
+    lines = ["=== REAL SUBREDDIT DATA (scraped via public Reddit API) ===\n"]
     for sub in enriched:
         lines.append(f"Subreddit: {sub.name}")
         lines.append(f"URL: {sub.url}")
@@ -271,7 +277,7 @@ Scoring rubric (relevance_score 1–10):
 - 1–4: Tangentially related; ICP is a minority of members
 
 Instructions:
-- Select the BEST 10–20 subreddits from the PRAW data above
+- Select the BEST 10–20 subreddits from the REAL SUBREDDIT DATA block above
 - Use EXACT subscriber counts from the REAL SUBREDDIT DATA block — do not invent numbers
 - For posting_rules, extract the 2–4 most marketer-relevant rules (self-promo policy, link rules)
 - Set self_promo_allowed=true only if rules explicitly permit it or there is a weekly thread for it
@@ -285,14 +291,14 @@ def run_structuring_phase(
     client: genai.Client,
     brief: CompanyBrief,
     domain: str,
-    enriched: list[PRAWSubredditData],
+    enriched: list[SubredditData],
     discovery_text: str,
     sources: list[str],
     candidates_discovered: int,
 ) -> SubredditMap:
-    """Phase 4: Convert PRAW data + discovery narrative into a validated SubredditMap."""
+    """Phase 4: Convert scraped subreddit data + discovery narrative into a validated SubredditMap."""
     snap = brief.company_snapshot
-    praw_block = _format_praw_block(enriched)
+    praw_block = _format_enriched_block(enriched)
 
     prompt = STRUCTURE_PROMPT.format(
         domain=domain,
@@ -356,14 +362,14 @@ def find_subreddits(brief: CompanyBrief, domain: str) -> SubredditMap:
         domain: Company domain (e.g. "stripe.com").
     """
     client = _get_client()
-    reddit = _get_reddit()
+    session = _get_session()
 
     print("[Phase 2] Running Gemini subreddit discovery with Google Search grounding…")
     discovery_text, sources = run_discovery_phase(client, brief, domain)
     print(f"[Phase 2] Done. Got {len(discovery_text)} chars, {len(sources)} source URLs.")
 
-    print("[Phase 3] Enriching candidates via PRAW…")
-    enriched, candidates_discovered = run_enrichment_phase(reddit, discovery_text)
+    print("[Phase 3] Enriching candidates via Reddit public JSON API (scrapi-reddit)…")
+    enriched, candidates_discovered = run_enrichment_phase(session, discovery_text)
     print(f"[Phase 3] Done. {len(enriched)} accessible subreddits from {candidates_discovered} candidates.")
 
     if len(enriched) < 10:

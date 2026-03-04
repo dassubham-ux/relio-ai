@@ -17,7 +17,10 @@ def _get_collection() -> Collection:
 
 
 def _domain_from_url(url: str) -> str:
-    return urlparse(url).netloc.lstrip("www.")
+    parsed = urlparse(url)
+    domain = parsed.netloc.lstrip("www.")
+    path = parsed.path.strip("/")
+    return f"{domain}/{path}" if path else domain
 
 
 def upsert_subreddit_map(map_dict: dict) -> str:
@@ -36,6 +39,28 @@ def upsert_subreddit_map(map_dict: dict) -> str:
     )
 
     doc_id = result.upserted_id or collection.find_one({"domain": domain}, {"_id": 1})["_id"]
+    return str(doc_id)
+
+
+def upsert_thread_search(result_dict: dict) -> str:
+    """
+    Upsert a ThreadSearchResult dict into MongoDB, keyed by domain + subreddit.
+    Returns the upserted/matched document ID as a string.
+    """
+    client = MongoClient(MONGO_URI)
+    collection = client[DB_NAME]["thread_searches"]
+    domain = result_dict["domain"]
+    subreddit = result_dict["subreddit"]
+
+    result = collection.update_one(
+        {"domain": domain, "subreddit": subreddit},
+        {"$set": result_dict},
+        upsert=True,
+    )
+
+    doc_id = result.upserted_id or collection.find_one(
+        {"domain": domain, "subreddit": subreddit}, {"_id": 1}
+    )["_id"]
     return str(doc_id)
 
 

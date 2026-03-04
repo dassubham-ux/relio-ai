@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relio AI — Company Deep Research</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --surface2:  #22263a;
+      --border:    #2e3248;
+      --accent:    #6366f1;
+      --accent-h:  #818cf8;
+      --text:      #e2e8f0;
+      --muted:     #94a3b8;
+      --success:   #22c55e;
+      --success-bg: rgba(34,197,94,0.1);
+      --error:     #ef4444;
+      --error-bg:  rgba(239,68,68,0.1);
+      --warn:      #f59e0b;
+      --warn-bg:   rgba(245,158,11,0.1);
+      --radius:    10px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 80px;
+    }
+
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 40px; }
+    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+
+    /* ── Views ── */
+    .view { display: none; width: 100%; max-width: 900px; }
+    .view.active { display: block; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      background: none;
+      border: none;
+      font-family: inherit;
+      padding: 0;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: var(--text); }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%;
+    }
+
+    /* ── Home ── */
+    .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 560px) { .home-grid { grid-template-columns: 1fr; } }
+
+    .option-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .option-card:hover { border-color: var(--accent); background: var(--surface2); }
+    .option-icon { font-size: 1.8rem; margin-bottom: 12px; }
+    .option-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; }
+    .option-desc { color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
+
+    /* ── Input row ── */
+    .input-row { display: flex; gap: 10px; }
+    .input-row input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-row input:focus { border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--muted); }
+
+    button.primary {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 20px;
+      white-space: nowrap;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button.primary:hover:not(:disabled) { background: var(--accent-h); }
+    button.primary:active:not(:disabled) { transform: scale(0.97); }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .status-bar.queued   { border-color: var(--warn); }
+    .status-bar.running  { border-color: var(--accent); }
+    .status-bar.completed { border-color: var(--success); }
+    .status-bar.failed   { border-color: var(--error); }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .status-text { flex: 1; }
+    .status-text strong { display: block; }
+    .status-text small { color: var(--muted); font-size: 0.8rem; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: -1px;
+      padding: 8px 14px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Section label ── */
+    .section-label {
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    /* ── Prose ── */
+    .prose {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      line-height: 1.65;
+      font-size: 0.9rem;
+      margin-bottom: 18px;
+    }
+
+    /* ── Tags ── */
+    .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
+    .tag {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.8rem;
+      padding: 4px 10px;
+    }
+    .tag.accent { border-color: var(--accent); color: var(--accent-h); background: rgba(99,102,241,0.08); }
+    .tag.warn   { border-color: var(--warn);   color: var(--warn);     background: var(--warn-bg); }
+    .tag.success{ border-color: var(--success); color: var(--success);  background: var(--success-bg); }
+    .tag.error  { border-color: var(--error);   color: var(--error);    background: var(--error-bg); }
+
+    /* ── ICP grid ── */
+    .icp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .icp-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .icp-label { color: var(--muted); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .icp-value { font-size: 0.85rem; line-height: 1.5; }
+
+    /* ── Keyword grid ── */
+    .kw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .kw-col h4 { color: var(--muted); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+    .kw-col ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .kw-col ul li { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; font-size: 0.82rem; padding: 5px 10px; }
+
+    /* ── Competitor cards ── */
+    .competitor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .competitor-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 5px; }
+    .competitor-card .c-name { font-weight: 600; font-size: 0.95rem; }
+    .competitor-card .c-cat { color: var(--muted); font-size: 0.78rem; }
+    .competitor-card a { color: var(--accent-h); font-size: 0.78rem; text-decoration: none; word-break: break-all; }
+    .competitor-card a:hover { text-decoration: underline; }
+
+    /* ── Sources ── */
+    .source-list { display: flex; flex-direction: column; gap: 8px; }
+    .source-item { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; transition: border-color 0.15s; }
+    .source-item:hover { border-color: var(--accent); }
+    .source-num { color: var(--muted); font-size: 0.75rem; font-weight: 600; min-width: 22px; text-align: right; }
+    .source-url { flex: 1; color: var(--accent-h); font-size: 0.83rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .source-open { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; font-family: inherit; font-size: 0.75rem; padding: 4px 10px; text-decoration: none; white-space: nowrap; transition: border-color 0.15s, color 0.15s; flex-shrink: 0; }
+    .source-open:hover { border-color: var(--accent-h); color: var(--accent-h); }
+
+    /* ── Brief list ── */
+    .brief-list { display: flex; flex-direction: column; gap: 10px; }
+    .brief-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; cursor: pointer; display: flex; align-items: center; gap: 16px; transition: border-color 0.15s; }
+    .brief-card:hover { border-color: var(--accent); }
+    .brief-card-info { flex: 1; min-width: 0; }
+    .brief-card-domain { font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
+    .brief-card-desc { color: var(--muted); font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .brief-card-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .brief-card-date { color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+    .brief-card-arrow { color: var(--muted); font-size: 1rem; }
+    .sub-badge { font-size: 0.7rem; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); color: var(--accent-h); border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+    .brief-empty { color: var(--muted); font-size: 0.88rem; text-align: center; padding: 32px 0; }
+    .list-loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.88rem; padding: 24px 0; }
+
+    /* ── Subreddit section heading ── */
+    .sub-section-heading {
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 0 10px;
+      margin-top: 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    .sub-section-heading:first-child { margin-top: 0; }
+
+    /* ── Subreddit card ── */
+    .subreddit-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      transition: border-color 0.15s;
+    }
+    .subreddit-card:last-child { margin-bottom: 0; }
+    .subreddit-card:hover { border-color: var(--border); }
+
+    .sub-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .sub-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--accent-h);
+      text-decoration: none;
+    }
+    .sub-name:hover { text-decoration: underline; }
+    .sub-subs { color: var(--muted); font-size: 0.8rem; }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 5px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+    .badge-score-high  { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
+    .badge-score-mid   { background: var(--warn-bg);    color: var(--warn);    border: 1px solid var(--warn); }
+    .badge-score-low   { background: var(--error-bg);   color: var(--error);   border: 1px solid var(--error); }
+    .badge-icp-high    { background: rgba(99,102,241,0.1); color: var(--accent-h); border: 1px solid var(--accent); }
+    .badge-icp-medium  { background: var(--warn-bg);    color: var(--warn);    border: 1px solid var(--warn); }
+    .badge-icp-low     { background: var(--surface);    color: var(--muted);   border: 1px solid var(--border); }
+    .badge-eng-high    { background: var(--success-bg); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
+    .badge-eng-medium  { background: var(--warn-bg);    color: var(--warn);    border: 1px solid rgba(245,158,11,0.3); }
+    .badge-eng-low     { background: var(--surface);    color: var(--muted);   border: 1px solid var(--border); }
+
+    .sub-open-btn {
+      margin-left: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .sub-open-btn:hover { border-color: var(--accent-h); color: var(--accent-h); }
+
+    .sub-reason { color: var(--muted); font-size: 0.84rem; line-height: 1.5; margin-bottom: 10px; }
+
+    .sub-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 10px; }
+    .sub-col { flex: 1; min-width: 160px; }
+    .sub-col-label { color: var(--muted); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+
+    .sub-promo {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.82rem;
+      padding: 3px 8px;
+      border-radius: 5px;
+    }
+    .sub-promo.yes { color: var(--success); background: var(--success-bg); }
+    .sub-promo.no  { color: var(--error);   background: var(--error-bg); }
+
+    .sub-rules {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .sub-rules li {
+      color: var(--muted);
+      font-size: 0.79rem;
+      padding-left: 10px;
+      position: relative;
+    }
+    .sub-rules li::before { content: '·'; position: absolute; left: 0; color: var(--border); }
+
+    /* ── Subreddit run prompt ── */
+    .sub-run-prompt {
+      text-align: center;
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .sub-run-prompt p { color: var(--muted); font-size: 0.88rem; max-width: 360px; line-height: 1.5; }
+
+    /* ── Inline status (inside tab) ── */
+    .tab-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+      margin-bottom: 16px;
+    }
+    .tab-status.running  { border-color: var(--accent); }
+    .tab-status.failed   { border-color: var(--error); color: #fca5a5; }
+
+    /* ── Metadata footer ── */
+    .meta-footer {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      line-height: 1.7;
+    }
+    .meta-footer a { color: var(--accent-h); text-decoration: none; }
+    .meta-footer a:hover { text-decoration: underline; }
+
+    /* ── Error banner ── */
+    .error-banner {
+      background: var(--error-bg);
+      border: 1px solid var(--error);
+      border-radius: 8px;
+      color: #fca5a5;
+      font-size: 0.88rem;
+      margin-top: 16px;
+      padding: 12px 16px;
+    }
+
+    /* ── Thread toggle button ── */
+    .thread-toggle-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.75rem;
+      padding: 4px 12px;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .thread-toggle-btn:hover { border-color: var(--accent-h); color: var(--accent-h); }
+
+    /* ── Thread section (accordion inside subreddit card) ── */
+    .thread-section {
+      border-top: 1px solid var(--border);
+      margin-top: 12px;
+      padding-top: 12px;
+    }
+
+    /* ── Thread card ── */
+    .thread-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .thread-card:last-child { margin-bottom: 0; }
+
+    .thread-title {
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--accent-h);
+      text-decoration: none;
+      line-height: 1.4;
+    }
+    .thread-title:hover { text-decoration: underline; }
+
+    .thread-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .thread-score-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+
+    .thread-type-badge {
+      font-size: 0.7rem;
+      border-radius: 4px;
+      padding: 2px 7px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .type-pain_point         { background: var(--error-bg);              color: #fca5a5;          border-color: var(--error); }
+    .type-tool_comparison    { background: rgba(99,102,241,0.1);         color: var(--accent-h);  border-color: var(--accent); }
+    .type-workflow_question  { background: var(--warn-bg);               color: var(--warn);      border-color: var(--warn); }
+    .type-competitor_mention { background: rgba(34,197,94,0.08);         color: var(--success);   border-color: rgba(34,197,94,0.3); }
+    .type-general_discussion { background: var(--surface2);              color: var(--muted);     border-color: var(--border); }
+
+    .thread-reason { color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
+    .thread-stats  { color: var(--muted); font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Relio <span>AI</span></h1>
+  <p>Company Deep Research — Agent 1 + Agent 2</p>
+</header>
+
+<!-- ══ VIEW: Home ══ -->
+<div id="view-home" class="view active">
+  <div class="home-grid">
+    <div class="option-card" onclick="showView('browse')">
+      <div class="option-icon">🗂️</div>
+      <div class="option-title">Company Briefs</div>
+      <div class="option-desc">Browse all previously researched companies and their subreddit maps.</div>
+    </div>
+    <div class="option-card" onclick="showView('research')">
+      <div class="option-icon">🔍</div>
+      <div class="option-title">Run Deep Research</div>
+      <div class="option-desc">Enter a company URL to trigger Agent 1 and generate a new brief.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VIEW: Browse ══ -->
+<div id="view-browse" class="view">
+  <button class="back-link" onclick="showView('home')">← Back</button>
+  <div class="card">
+    <div id="briefs-list-container">
+      <div class="list-loading"><div class="spinner"></div><span>Loading company briefs…</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VIEW: Research ══ -->
+<div id="view-research" class="view">
+  <button class="back-link" onclick="showView('home')">← Back</button>
+  <div class="card">
+    <div class="input-row">
+      <input id="url-input" type="url" placeholder="https://stripe.com" autocomplete="off" />
+      <button class="primary" id="run-btn" onclick="startResearch()">Run Deep Research</button>
+    </div>
+
+    <div id="research-status" class="status-bar">
+      <div id="research-spinner" class="spinner" style="display:none"></div>
+      <div id="research-icon" class="status-icon"></div>
+      <div class="status-text"><strong id="research-title"></strong><small id="research-sub"></small></div>
+    </div>
+
+    <div id="research-error" class="error-banner" style="display:none"></div>
+
+    <div id="research-results" style="display:none; margin-top:28px;">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('r-snapshot', this)">Company Snapshot</button>
+        <button class="tab-btn" onclick="switchTab('r-keywords', this)">Keyword Map</button>
+        <button class="tab-btn" onclick="switchTab('r-competitors', this)">Competitors</button>
+        <button class="tab-btn" onclick="switchTab('r-sources', this)">Sources</button>
+        <button class="tab-btn" onclick="switchTab('r-subreddits', this); lazyLoadSubs('r-subreddits')">Subreddits</button>
+      </div>
+      <div id="tab-r-snapshot"   class="tab-panel active"></div>
+      <div id="tab-r-keywords"   class="tab-panel"></div>
+      <div id="tab-r-competitors" class="tab-panel"></div>
+      <div id="tab-r-sources"    class="tab-panel"></div>
+      <div id="tab-r-subreddits" class="tab-panel" data-domain=""></div>
+    </div>
+
+    <div id="research-meta" class="meta-footer" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ══ VIEW: Brief Detail ══ -->
+<div id="view-detail" class="view">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;">
+    <button class="back-link" style="margin-bottom:0" onclick="showView('browse')">← Back to Company Briefs</button>
+    <button class="primary" id="rerun-btn" style="font-size:0.82rem;padding:7px 14px" onclick="rerunResearch()">↺ Re-run Deep Research</button>
+  </div>
+  <div id="rerun-status" class="status-bar" style="margin-bottom:16px;margin-top:0"></div>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('d-snapshot', this)">Company Snapshot</button>
+      <button class="tab-btn" onclick="switchTab('d-keywords', this)">Keyword Map</button>
+      <button class="tab-btn" onclick="switchTab('d-competitors', this)">Competitors</button>
+      <button class="tab-btn" onclick="switchTab('d-sources', this)">Sources</button>
+      <button class="tab-btn" onclick="switchTab('d-subreddits', this); lazyLoadSubs('d-subreddits')">Subreddits</button>
+    </div>
+    <div id="tab-d-snapshot"    class="tab-panel active"></div>
+    <div id="tab-d-keywords"    class="tab-panel"></div>
+    <div id="tab-d-competitors" class="tab-panel"></div>
+    <div id="tab-d-sources"     class="tab-panel"></div>
+    <div id="tab-d-subreddits"  class="tab-panel" data-domain=""></div>
+
+    <div id="detail-meta" class="meta-footer" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────
+  let researchPollTimer = null;
+  let subPollTimers = {}; // panelId → timer
+  let rerunPollTimer = null;
+  let detailUrl = '';
+  let threadCache = {};       // "domain::r/subreddit" → ThreadSearchResult
+  let threadPollTimers = {};  // "domain::r/subreddit" → interval id
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function esc(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function tagList(items, cls = '') {
+    if (!Array.isArray(items) || !items.length)
+      return '<span style="color:var(--muted);font-size:.85rem">—</span>';
+    return items.map(i => `<span class="tag ${cls}">${esc(i)}</span>`).join('');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+    catch { return iso; }
+  }
+
+  function fmtSubs(n) {
+    if (!n) return '0';
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000) return Math.round(n / 1_000) + 'K';
+    return String(n);
+  }
+
+  function domainFromUrl(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); }
+    catch { return url; }
+  }
+
+  // ── View routing ──────────────────────────────────────────────────────────
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    if (name === 'browse') loadBriefsList();
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+
+  function switchTab(name, btn) {
+    const panel = document.getElementById('tab-' + name);
+    const card = panel.closest('.card, #research-results');
+    card.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    const tabBar = card.querySelector('.tabs');
+    tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    panel.classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ── Browse: load list ─────────────────────────────────────────────────────
+
+  async function loadBriefsList() {
+    const container = document.getElementById('briefs-list-container');
+    container.innerHTML = `<div class="list-loading"><div class="spinner"></div><span>Loading…</span></div>`;
+    try {
+      const [briefsRes, subsRes] = await Promise.all([
+        fetch('/api/v1/briefs'),
+        fetch('/api/v1/subreddits'),
+      ]);
+      const briefs = briefsRes.ok ? await briefsRes.json() : [];
+      const subDomains = new Set(
+        (subsRes.ok ? await subsRes.json() : []).map(s => s.domain)
+      );
+
+      if (!briefs.length) {
+        container.innerHTML = `<div class="brief-empty">No company briefs yet. Run Deep Research to add one.</div>`;
+        return;
+      }
+
+      container.innerHTML = `<div class="brief-list">${briefs.map(b => {
+        const domain = b.domain || '';
+        const date   = fmtDate(b.metadata?.researched_at);
+        const desc   = b.company_snapshot?.what_it_does || '';
+        const hasSub = subDomains.has(domain);
+        return `
+          <div class="brief-card" onclick="openBrief('${esc(domain)}')">
+            <div class="brief-card-info">
+              <div class="brief-card-domain">${esc(domain)}</div>
+              <div class="brief-card-desc">${esc(desc)}</div>
+            </div>
+            <div class="brief-card-meta">
+              <span class="brief-card-date">${esc(date)}</span>
+              ${hasSub ? '<span class="sub-badge">Subreddits ✓</span>' : ''}
+            </div>
+            <div class="brief-card-arrow">›</div>
+          </div>`;
+      }).join('')}</div>`;
+    } catch (err) {
+      container.innerHTML = `<div class="error-banner" style="margin:0">Failed to load: ${esc(err.message)}</div>`;
+    }
+  }
+
+  // ── Browse: open a brief ──────────────────────────────────────────────────
+
+  async function openBrief(domain) {
+    showView('detail');
+
+    // Reset tabs
+    const card = document.querySelector('#view-detail .card');
+    card.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    card.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-d-snapshot').classList.add('active');
+    card.querySelectorAll('.tab-btn')[0].classList.add('active');
+
+    // Store domain on subreddits panel for lazy load
+    document.getElementById('tab-d-subreddits').dataset.domain = domain;
+    document.getElementById('tab-d-subreddits').dataset.loaded = '';
+    document.getElementById('tab-d-subreddits').innerHTML = '';
+
+    document.getElementById('detail-meta').style.display = 'none';
+    document.getElementById('tab-d-snapshot').innerHTML =
+      `<div class="list-loading"><div class="spinner"></div><span>Loading…</span></div>`;
+
+    try {
+      const res = await fetch(`/api/v1/briefs/${encodeURIComponent(domain)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const brief = await res.json();
+      detailUrl = brief.metadata?.url || '';
+      renderBriefInto(brief, 'd-');
+      renderMeta(brief.metadata, 'detail-meta');
+    } catch (err) {
+      document.getElementById('tab-d-snapshot').innerHTML =
+        `<div class="error-banner" style="margin:0">Failed to load: ${esc(err.message)}</div>`;
+    }
+  }
+
+  // ── Re-run deep research from detail view ─────────────────────────────────
+
+  async function rerunResearch() {
+    if (!detailUrl) return;
+    if (rerunPollTimer) { clearInterval(rerunPollTimer); rerunPollTimer = null; }
+
+    const btn = document.getElementById('rerun-btn');
+    btn.disabled = true;
+    setRerunStatus('running', 'Running', `Re-researching ${domainFromUrl(detailUrl)}…`);
+
+    try {
+      const res = await fetch('/api/v1/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: detailUrl }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      const data = await res.json();
+      rerunPollTimer = setInterval(() => pollRerun(data.job_id), 2000);
+    } catch (err) {
+      setRerunStatus('failed', 'Failed', err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function pollRerun(jobId) {
+    try {
+      const res = await fetch(`/api/v1/jobs/${jobId}`);
+      if (!res.ok) return;
+      const job = await res.json();
+
+      if (job.status === 'completed') {
+        clearInterval(rerunPollTimer); rerunPollTimer = null;
+        setRerunStatus('completed', 'Updated', 'Brief refreshed with latest research.');
+        document.getElementById('rerun-btn').disabled = false;
+        detailUrl = job.result.metadata?.url || detailUrl;
+        renderBriefInto(job.result, 'd-');
+        renderMeta(job.result.metadata, 'detail-meta');
+        // Reset subreddits tab so it re-checks after the brief update
+        const subPanel = document.getElementById('tab-d-subreddits');
+        subPanel.dataset.loaded = '';
+      } else if (job.status === 'failed') {
+        clearInterval(rerunPollTimer); rerunPollTimer = null;
+        setRerunStatus('failed', 'Failed', job.error || 'Research job failed');
+        document.getElementById('rerun-btn').disabled = false;
+      }
+    } catch (_) {}
+  }
+
+  function setRerunStatus(state, title, sub) {
+    const bar = document.getElementById('rerun-status');
+    bar.style.display = 'flex';
+    bar.className = 'status-bar ' + state;
+    const spinnerHtml = state === 'running' ? '<div class="spinner"></div>' : '';
+    const iconMap = { completed: '✅', failed: '❌', running: '' };
+    bar.innerHTML = `
+      ${spinnerHtml}
+      <div class="status-icon">${iconMap[state] || ''}</div>
+      <div class="status-text"><strong>${esc(title)}</strong><small>${esc(sub)}</small></div>`;
+  }
+
+  // ── Lazy-load subreddits tab on click ─────────────────────────────────────
+
+  function lazyLoadSubs(panelId) {
+    const panel = document.getElementById('tab-' + panelId);
+    if (panel.dataset.loaded === 'yes') return; // already loaded
+    const domain = panel.dataset.domain;
+    if (!domain) return;
+    panel.dataset.loaded = 'yes';
+    loadSubreddits(panelId, domain);
+  }
+
+  // ── Subreddits: check + render ────────────────────────────────────────────
+
+  async function loadSubreddits(panelId, domain) {
+    const panel = document.getElementById('tab-' + panelId);
+    panel.innerHTML = `<div class="list-loading"><div class="spinner"></div><span>Checking for subreddit map…</span></div>`;
+
+    try {
+      const res = await fetch(`/api/v1/subreddits/${encodeURIComponent(domain)}`);
+      if (res.ok) {
+        const map = await res.json();
+        renderSubredditMap(map, panelId);
+      } else if (res.status === 404) {
+        renderSubRunPrompt(panelId, domain);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (err) {
+      panel.innerHTML = `<div class="error-banner" style="margin:0">${esc(err.message)}</div>`;
+    }
+  }
+
+  function renderSubRunPrompt(panelId, domain) {
+    const panel = document.getElementById('tab-' + panelId);
+    panel.innerHTML = `
+      <div class="sub-run-prompt">
+        <div style="font-size:2rem">🤖</div>
+        <p>No subreddit map found for <strong>${esc(domain)}</strong>.<br>
+           Run Agent 2 to discover and rank the best subreddits for this company.</p>
+        <button class="primary" onclick="runSubreddits('${esc(panelId)}', '${esc(domain)}')">
+          Find Subreddits
+        </button>
+      </div>`;
+  }
+
+  async function runSubreddits(panelId, domain) {
+    const panel = document.getElementById('tab-' + panelId);
+    panel.innerHTML = `
+      <div class="tab-status running">
+        <div class="spinner"></div>
+        <div class="status-text">
+          <strong>Running Agent 2</strong>
+          <small>Discovering and ranking subreddits for ${esc(domain)}…</small>
+        </div>
+      </div>`;
+
+    try {
+      const res = await fetch('/api/v1/subreddits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      const data = await res.json();
+
+      if (subPollTimers[panelId]) clearInterval(subPollTimers[panelId]);
+      subPollTimers[panelId] = setInterval(() => pollSubJob(data.job_id, panelId, domain), 3000);
+    } catch (err) {
+      panel.innerHTML = `
+        <div class="tab-status failed">❌ ${esc(err.message)}</div>
+        ${renderSubRunPromptHTML(panelId, domain)}`;
+    }
+  }
+
+  function renderSubRunPromptHTML(panelId, domain) {
+    return `
+      <div class="sub-run-prompt">
+        <button class="primary" onclick="runSubreddits('${esc(panelId)}', '${esc(domain)}')">
+          Retry
+        </button>
+      </div>`;
+  }
+
+  async function pollSubJob(jobId, panelId, domain) {
+    try {
+      const res = await fetch(`/api/v1/jobs/${jobId}`);
+      if (!res.ok) return;
+      const job = await res.json();
+
+      const panel = document.getElementById('tab-' + panelId);
+
+      if (job.status === 'completed') {
+        clearInterval(subPollTimers[panelId]);
+        delete subPollTimers[panelId];
+        renderSubredditMap(job.result, panelId);
+        // Refresh browse list to show badge
+        if (document.getElementById('view-browse').classList.contains('active')) {
+          loadBriefsList();
+        }
+      } else if (job.status === 'failed') {
+        clearInterval(subPollTimers[panelId]);
+        delete subPollTimers[panelId];
+        panel.innerHTML = `
+          <div class="tab-status failed">❌ ${esc(job.error || 'Agent 2 failed')}</div>
+          ${renderSubRunPromptHTML(panelId, domain)}`;
+      } else {
+        // Update progress message
+        const statusEl = panel.querySelector('.tab-status small');
+        if (statusEl) {
+          const msgs = [
+            'Searching Reddit for relevant communities…',
+            'Enriching subreddits via Reddit API…',
+            'Ranking and structuring results…',
+          ];
+          statusEl.textContent = msgs[Math.floor(Date.now() / 5000) % msgs.length];
+        }
+      }
+    } catch (_) {}
+  }
+
+  function renderSubredditMap(map, panelId) {
+    const subreddits = map.subreddits || [];
+    const meta = map.metadata || {};
+    const domain = meta.domain || '';
+    const panel = document.getElementById('tab-' + panelId);
+
+    if (!subreddits.length) {
+      panel.innerHTML = '<p style="color:var(--muted)">No subreddits found.</p>';
+      return;
+    }
+
+    // Group by ICP fit
+    const groups = { high: [], medium: [], low: [] };
+    subreddits.forEach(s => {
+      const fit = (s.icp_fit || 'low').toLowerCase();
+      (groups[fit] || groups.low).push(s);
+    });
+
+    const groupLabels = { high: 'High ICP Fit', medium: 'Medium ICP Fit', low: 'Low ICP Fit' };
+
+    let html = '';
+
+    // Summary bar with re-run button
+    html += `
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:0.83rem;">
+        <span><strong>${subreddits.length}</strong> <span style="color:var(--muted)">subreddits ranked</span></span>
+        <span><strong>${meta.candidates_discovered || '?'}</strong> <span style="color:var(--muted)">discovered</span></span>
+        <span><strong>${meta.candidates_enriched || '?'}</strong> <span style="color:var(--muted)">enriched</span></span>
+        <span style="color:var(--muted)">Generated: ${esc(fmtDate(meta.generated_at))}</span>
+        ${domain ? `<button class="thread-toggle-btn" style="margin-left:auto" onclick="rerunSubreddits('${esc(panelId)}', '${esc(domain)}')">↺ Re-run Subreddit Search</button>` : ''}
+      </div>`;
+
+    ['high', 'medium', 'low'].forEach(fit => {
+      if (!groups[fit].length) return;
+      html += `<div class="sub-section-heading">${groupLabels[fit]} (${groups[fit].length})</div>`;
+      groups[fit].forEach(s => { html += renderSubCard(s, domain, panelId); });
+    });
+
+    panel.innerHTML = html;
+  }
+
+  function renderSubCard(s, domain, panelId) {
+    const score = s.relevance_score || 0;
+    const scoreCls = score >= 8 ? 'badge-score-high' : score >= 5 ? 'badge-score-mid' : 'badge-score-low';
+    const icpCls   = { high: 'badge-icp-high', medium: 'badge-icp-medium', low: 'badge-icp-low' }[s.icp_fit] || 'badge-icp-low';
+    const engCls   = { high: 'badge-eng-high', medium: 'badge-eng-medium', low: 'badge-eng-low' }[s.engagement_level] || 'badge-eng-low';
+
+    const themes = (s.content_themes || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    const rules  = (s.posting_rules || []).map(r => `<li>${esc(r)}</li>`).join('');
+    const promoClass = s.self_promo_allowed ? 'yes' : 'no';
+    const promoText  = s.self_promo_allowed ? '✓ Self-promo allowed' : '✗ No self-promotion';
+
+    // Unique card ID for thread section
+    const cardId = (panelId || 'sub') + '__' + (s.name || '').replace(/[^a-zA-Z0-9]/g, '_');
+
+    return `
+      <div class="subreddit-card">
+        <div class="sub-header">
+          <a class="sub-name" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>
+          <span class="sub-subs">${fmtSubs(s.subscribers)} members</span>
+          <span class="badge ${scoreCls}">Score ${score}/10</span>
+          <span class="badge ${icpCls}">${esc(s.icp_fit || '—')} ICP</span>
+          <span class="badge ${engCls}">${esc(s.engagement_level || '—')} engagement</span>
+          <a class="sub-open-btn" href="${esc(s.url)}" target="_blank" rel="noopener">Open ↗</a>
+        </div>
+
+        ${s.relevance_reason ? `<div class="sub-reason">${esc(s.relevance_reason)}</div>` : ''}
+
+        <div class="sub-row">
+          ${themes ? `<div class="sub-col">
+            <div class="sub-col-label">Content themes</div>
+            <div class="tags" style="margin:0;gap:5px">${themes}</div>
+          </div>` : ''}
+
+          <div class="sub-col">
+            <div class="sub-col-label">Self-promotion</div>
+            <span class="sub-promo ${promoClass}">${promoText}</span>
+          </div>
+
+          ${rules ? `<div class="sub-col">
+            <div class="sub-col-label">Key rules</div>
+            <ul class="sub-rules">${rules}</ul>
+          </div>` : ''}
+        </div>
+
+        ${domain ? `
+        <div style="display:flex;justify-content:flex-end;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+          <button id="threadsToggleBtn-${cardId}" class="thread-toggle-btn"
+            onclick="toggleThreads('${esc(domain)}', '${esc(s.name)}', '${esc(cardId)}')">
+            🔍 Find Threads
+          </button>
+        </div>
+        <div id="threads-${cardId}" class="thread-section" style="display:none"></div>` : ''}
+      </div>`;
+  }
+
+  // ── Re-run subreddit search ───────────────────────────────────────────────
+
+  function rerunSubreddits(panelId, domain) {
+    const panel = document.getElementById('tab-' + panelId);
+    panel.dataset.loaded = '';
+    runSubreddits(panelId, domain);
+  }
+
+  // ── Thread search: toggle accordion ───────────────────────────────────────
+
+  function toggleThreads(domain, subreddit, cardId) {
+    const section = document.getElementById('threads-' + cardId);
+    const btn = document.getElementById('threadsToggleBtn-' + cardId);
+    if (!section) return;
+
+    if (section.style.display === 'none') {
+      section.style.display = 'block';
+      if (btn) btn.textContent = '▲ Hide Threads';
+      loadThreads(domain, subreddit, cardId);
+    } else {
+      section.style.display = 'none';
+      if (btn) btn.textContent = '🔍 Find Threads';
+    }
+  }
+
+  // ── Thread search: load (cache → API → prompt) ────────────────────────────
+
+  async function loadThreads(domain, subreddit, cardId) {
+    const key = domain + '::' + subreddit;
+    const section = document.getElementById('threads-' + cardId);
+    if (!section) return;
+
+    if (threadCache[key]) {
+      renderThreadResults(threadCache[key], cardId);
+      return;
+    }
+
+    section.innerHTML = `<div class="list-loading" style="padding:12px 0"><div class="spinner"></div><span>Checking for thread data…</span></div>`;
+
+    try {
+      const subName = subreddit.replace(/^r\//, '');
+      const res = await fetch(`/api/v1/threads/${encodeURIComponent(domain)}/${encodeURIComponent(subName)}`);
+      if (res.ok) {
+        const data = await res.json();
+        threadCache[key] = data;
+        renderThreadResults(data, cardId);
+      } else if (res.status === 404) {
+        renderThreadRunPrompt(section, domain, subreddit, cardId);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (err) {
+      section.innerHTML = `<div class="tab-status failed" style="margin:8px 0">❌ ${esc(err.message)}</div>`;
+    }
+  }
+
+  function renderThreadRunPrompt(section, domain, subreddit, cardId) {
+    section.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;flex-wrap:wrap">
+        <span style="color:var(--muted);font-size:0.83rem">No thread data yet for <strong>${esc(subreddit)}</strong></span>
+        <button class="primary" style="font-size:0.82rem;padding:7px 14px"
+          onclick="runThreadSearch('${esc(domain)}', '${esc(subreddit)}', '${esc(cardId)}')">
+          Search Threads
+        </button>
+      </div>`;
+  }
+
+  // ── Thread search: start job ──────────────────────────────────────────────
+
+  async function runThreadSearch(domain, subreddit, cardId) {
+    const section = document.getElementById('threads-' + cardId);
+    if (!section) return;
+
+    const key = domain + '::' + subreddit;
+    if (threadPollTimers[key]) { clearInterval(threadPollTimers[key]); delete threadPollTimers[key]; }
+
+    section.innerHTML = `
+      <div class="tab-status running" style="margin:8px 0">
+        <div class="spinner"></div>
+        <div class="status-text">
+          <strong>Searching threads</strong>
+          <small>Finding top threads in ${esc(subreddit)}…</small>
+        </div>
+      </div>`;
+
+    try {
+      const res = await fetch('/api/v1/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, subreddit }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      const data = await res.json();
+      threadPollTimers[key] = setInterval(() => pollThreadJob(data.job_id, domain, subreddit, cardId), 3000);
+    } catch (err) {
+      section.innerHTML = `<div class="tab-status failed" style="margin:8px 0">❌ ${esc(err.message)}</div>`;
+    }
+  }
+
+  // ── Thread search: poll job ───────────────────────────────────────────────
+
+  async function pollThreadJob(jobId, domain, subreddit, cardId) {
+    const key = domain + '::' + subreddit;
+    try {
+      const res = await fetch(`/api/v1/jobs/${jobId}`);
+      if (!res.ok) return;
+      const job = await res.json();
+      const section = document.getElementById('threads-' + cardId);
+      if (!section) { clearInterval(threadPollTimers[key]); delete threadPollTimers[key]; return; }
+
+      if (job.status === 'completed') {
+        clearInterval(threadPollTimers[key]);
+        delete threadPollTimers[key];
+        threadCache[key] = job.result;
+        renderThreadResults(job.result, cardId);
+      } else if (job.status === 'failed') {
+        clearInterval(threadPollTimers[key]);
+        delete threadPollTimers[key];
+        section.innerHTML = `<div class="tab-status failed" style="margin:8px 0">❌ ${esc(job.error || 'Thread search failed')}</div>`;
+      }
+    } catch (_) {}
+  }
+
+  // ── Thread search: render results ─────────────────────────────────────────
+
+  function renderThreadResults(data, cardId) {
+    const section = document.getElementById('threads-' + cardId);
+    if (!section) return;
+    const threads = data.threads || [];
+
+    if (!threads.length) {
+      section.innerHTML = `<p style="color:var(--muted);font-size:0.83rem;padding:10px 0">No relevant threads found.</p>`;
+      return;
+    }
+
+    const typeLabels = {
+      pain_point: 'Pain Point',
+      tool_comparison: 'Tool Comparison',
+      workflow_question: 'Workflow',
+      competitor_mention: 'Competitor',
+      general_discussion: 'General',
+    };
+
+    section.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <span style="color:var(--muted);font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em">
+          Top ${threads.length} threads · ${esc(data.subreddit)}
+        </span>
+        <button class="thread-toggle-btn"
+          onclick="runThreadSearch('${esc(data.domain)}', '${esc(data.subreddit)}', '${esc(cardId)}')">
+          ↺ Re-run Search
+        </button>
+      </div>
+      ${threads.map(t => {
+        const sc = t.relevance_score || 0;
+        const scCls = sc >= 8 ? 'badge-score-high' : sc >= 5 ? 'badge-score-mid' : 'badge-score-low';
+        const typeCls = 'type-' + (t.opportunity_type || 'general_discussion');
+        const label = typeLabels[t.opportunity_type] || t.opportunity_type || 'General';
+        return `
+          <div class="thread-card">
+            <a class="thread-title" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>
+            <div class="thread-meta">
+              <span class="thread-score-badge ${scCls}">Score ${sc}/10</span>
+              <span class="thread-type-badge ${typeCls}">${esc(label)}</span>
+              <span class="thread-stats">↑${t.score || 0} · 💬${t.num_comments || 0}</span>
+            </div>
+            ${t.relevance_reason ? `<div class="thread-reason">${esc(t.relevance_reason)}</div>` : ''}
+          </div>`;
+      }).join('')}`;
+  }
+
+  // ── Research flow ─────────────────────────────────────────────────────────
+
+  function setResearchStatus(state, title, sub) {
+    const bar     = document.getElementById('research-status');
+    const spinner = document.getElementById('research-spinner');
+    const icon    = document.getElementById('research-icon');
+    bar.style.display = 'flex';
+    bar.className = 'status-bar ' + state;
+    const iconMap = { queued: '⏳', running: '', completed: '✅', failed: '❌' };
+    icon.textContent = iconMap[state] || '';
+    spinner.style.display = state === 'running' ? 'block' : 'none';
+    document.getElementById('research-title').textContent = title;
+    document.getElementById('research-sub').textContent = sub || '';
+  }
+
+  async function startResearch() {
+    const urlInput = document.getElementById('url-input');
+    const url = urlInput.value.trim();
+    if (!url) { urlInput.focus(); return; }
+
+    if (researchPollTimer) { clearInterval(researchPollTimer); researchPollTimer = null; }
+    document.getElementById('research-results').style.display = 'none';
+    document.getElementById('research-error').style.display = 'none';
+    document.getElementById('research-meta').style.display = 'none';
+    document.getElementById('run-btn').disabled = true;
+
+    setResearchStatus('queued', 'Queued', 'Starting research job…');
+
+    try {
+      const res = await fetch('/api/v1/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      const data = await res.json();
+      setResearchStatus('running', 'Running', 'Agent 1 is researching the company…');
+      researchPollTimer = setInterval(() => pollResearch(data.job_id, url), 2000);
+    } catch (err) {
+      document.getElementById('research-error').textContent = err.message;
+      document.getElementById('research-error').style.display = 'block';
+      document.getElementById('run-btn').disabled = false;
+      document.getElementById('research-status').style.display = 'none';
+    }
+  }
+
+  async function pollResearch(jobId, url) {
+    try {
+      const res = await fetch(`/api/v1/jobs/${jobId}`);
+      if (!res.ok) return;
+      const job = await res.json();
+
+      if (job.status === 'completed') {
+        clearInterval(researchPollTimer);
+        researchPollTimer = null;
+        setResearchStatus('completed', 'Completed', 'Research finished successfully.');
+        document.getElementById('run-btn').disabled = false;
+
+        const domain = domainFromUrl(url);
+        // Set domain on subreddits panel before rendering
+        document.getElementById('tab-r-subreddits').dataset.domain = domain;
+        document.getElementById('tab-r-subreddits').dataset.loaded = '';
+
+        renderBriefInto(job.result, 'r-');
+        renderMeta(job.result.metadata, 'research-meta');
+
+        const resultsEl = document.getElementById('research-results');
+        resultsEl.style.display = 'block';
+        // Reset to first tab
+        resultsEl.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        resultsEl.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-r-snapshot').classList.add('active');
+        resultsEl.querySelectorAll('.tab-btn')[0].classList.add('active');
+
+      } else if (job.status === 'failed') {
+        clearInterval(researchPollTimer);
+        researchPollTimer = null;
+        setResearchStatus('failed', 'Failed', '');
+        document.getElementById('research-error').textContent = job.error || 'Unknown error';
+        document.getElementById('research-error').style.display = 'block';
+        document.getElementById('run-btn').disabled = false;
+      }
+    } catch (_) {}
+  }
+
+  // ── Render brief content into tab panels ──────────────────────────────────
+
+  function renderBriefInto(brief, prefix) {
+    renderSnapshot(brief.company_snapshot, prefix + 'snapshot', brief.firmographic_data, brief.market_category);
+    renderKeywords(brief.keyword_map, prefix + 'keywords');
+    renderCompetitors(brief.competitor_set, prefix + 'competitors');
+    renderSources(brief.metadata, prefix + 'sources');
+    // Subreddits tab rendered lazily on click
+  }
+
+  function renderSnapshot(snap, panelId, firmographic, marketCategory) {
+    const icp  = snap.icp  || {};
+    const firm = firmographic || {};
+    const mc   = marketCategory || {};
+
+    document.getElementById('tab-' + panelId).innerHTML = `
+
+      ${snap.one_liner ? `<div class="prose" style="font-size:1rem;font-weight:500;border-color:var(--accent)">${esc(snap.one_liner)}</div>` : ''}
+
+      <p class="section-label">What it does</p>
+      <div class="prose">${esc(snap.what_it_does)}</div>
+
+      ${(firm.industry || firm.founded) ? `
+      <p class="section-label">Company info</p>
+      <div class="icp-grid">
+        ${[
+          { label: 'Industry',    value: firm.industry    || '—' },
+          { label: 'Founded',     value: firm.founded     || '—' },
+          { label: 'Employees',   value: firm.employee_range || '—' },
+          { label: 'Funding',     value: firm.funding     || '—' },
+          { label: 'HQ',          value: firm.headquarters || '—' },
+        ].map(({ label, value }) => `
+          <div class="icp-card">
+            <div class="icp-label">${esc(label)}</div>
+            <div class="icp-value">${esc(value)}</div>
+          </div>`).join('')}
+      </div>` : ''}
+
+      ${(mc.primary || mc.secondary) ? `
+      <p class="section-label">Market category</p>
+      <div class="tags">
+        ${mc.primary   ? `<span class="tag accent">${esc(mc.primary)}</span>`   : ''}
+        ${mc.secondary ? `<span class="tag">${esc(mc.secondary)}</span>` : ''}
+      </div>` : ''}
+
+      ${snap.value_proposition && snap.value_proposition.length ? `
+      <p class="section-label">Value proposition</p>
+      <div class="tags">${tagList(snap.value_proposition, 'accent')}</div>` : ''}
+
+      <p class="section-label">Ideal Customer Profile</p>
+      <div class="icp-grid">
+        ${[
+          { label: 'Roles',        value: (icp.roles || []).join(', ') || '—' },
+          { label: 'Industries',   value: (icp.industries || []).join(', ') || '—' },
+          { label: 'Company size', value: icp.company_size || '—' },
+          { label: 'Geography',    value: icp.geography || '—' },
+        ].map(({ label, value }) => `
+          <div class="icp-card">
+            <div class="icp-label">${esc(label)}</div>
+            <div class="icp-value">${esc(value)}</div>
+          </div>`).join('')}
+      </div>
+
+      <p class="section-label">Primary use cases</p>
+      <div class="tags">${tagList(snap.primary_use_cases, 'accent')}</div>
+
+      <p class="section-label">Core pain points solved</p>
+      <div class="tags">${tagList(snap.core_pain_points_solved)}</div>
+
+      <p class="section-label">Differentiators</p>
+      <div class="tags">${tagList(snap.differentiators, 'accent')}</div>
+
+      ${snap.positioning ? `
+      <p class="section-label">Positioning</p>
+      <div class="prose">${esc(snap.positioning)}</div>` : ''}
+
+      <p class="section-label">Reddit-safe description</p>
+      <div class="prose">${esc(snap.reddit_safe_description)}</div>
+
+      <p class="section-label">Red flags (avoid on Reddit)</p>
+      <div class="tags">${tagList(snap.red_flags, 'warn')}</div>
+    `;
+  }
+
+  function renderKeywords(km, panelId) {
+    document.getElementById('tab-' + panelId).innerHTML = `
+      <div class="kw-grid">
+        ${[
+          { label: 'Problem Keywords',    key: 'problem_keywords' },
+          { label: 'Workflow Keywords',   key: 'workflow_keywords' },
+          { label: 'Tool Comparison',     key: 'tool_comparison_keywords' },
+          { label: 'Competitor Keywords', key: 'competitor_keywords' },
+        ].map(({ label, key }) => `
+          <div class="kw-col">
+            <h4>${esc(label)}</h4>
+            <ul>
+              ${(km[key] || []).map(k => `<li>${esc(k)}</li>`).join('')
+                || '<li style="color:var(--muted)">—</li>'}
+            </ul>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  function renderCompetitors(list, panelId) {
+    if (!Array.isArray(list) || !list.length) {
+      document.getElementById('tab-' + panelId).innerHTML = '<p style="color:var(--muted)">No competitors found.</p>';
+      return;
+    }
+    document.getElementById('tab-' + panelId).innerHTML = `
+      <div class="competitor-grid">
+        ${list.map(c => `
+          <div class="competitor-card">
+            <div class="c-name">${esc(c.name)}</div>
+            <div class="c-cat">${esc(c.category)}</div>
+            ${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.url)}</a>` : ''}
+          </div>`).join('')}
+      </div>`;
+  }
+
+  function renderSources(meta, panelId) {
+    const sources = (meta && meta.sources) || [];
+    if (!sources.length) {
+      document.getElementById('tab-' + panelId).innerHTML =
+        '<p style="color:var(--muted);font-size:.88rem">No sources recorded.</p>';
+      return;
+    }
+    document.getElementById('tab-' + panelId).innerHTML = `
+      <div class="source-list">
+        ${sources.map((s, i) => `
+          <div class="source-item">
+            <span class="source-num">${i + 1}</span>
+            <span class="source-url" title="${esc(s)}">${esc(s)}</span>
+            <a class="source-open" href="${esc(s)}" target="_blank" rel="noopener">Open ↗</a>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  function renderMeta(meta, footerId) {
+    if (!meta) return;
+    const el = document.getElementById(footerId);
+    el.innerHTML = `
+      <strong>Researched:</strong> ${esc(fmtDate(meta.researched_at))} &nbsp;|&nbsp;
+      <strong>URL:</strong> <a href="${esc(meta.url)}" target="_blank" rel="noopener">${esc(meta.url)}</a>`;
+    el.style.display = 'block';
+  }
+
+  // ── Enter key ─────────────────────────────────────────────────────────────
+  document.getElementById('url-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') startResearch();
+  });
+</script>
+</body>
+</html>

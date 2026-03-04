@@ -95,15 +95,25 @@ Company URL: {url}
 
 Rules:
 - company_snapshot.what_it_does: exactly 1–2 sentences, factual
-- icp.roles: 3–6 specific job titles (e.g. "VP of Sales", not "executives")
-- icp.industries: 2–5 industries
-- icp.company_size: employee range like "50–500 employees"
-- icp.geography: primary geographic markets
-- primary_use_cases: 3–5 concrete use cases
-- core_pain_points_solved: 5 specific pain points, written as problems customers face
-- differentiators: 3 specific advantages over competitors (not generic marketing speak)
-- reddit_safe_description: describe the product as if recommending it to a friend on Reddit — no jargon
-- red_flags: 3–5 phrases/claims to avoid (hype words, unverifiable superlatives)
+- company_snapshot.one_liner: the company's own single-sentence pitch (from their website hero or tagline)
+- company_snapshot.value_proposition: 3–5 concrete value statements (what customers gain, not what the product does)
+- company_snapshot.icp.roles: 3–6 specific job titles (e.g. "VP of Sales", not "executives")
+- company_snapshot.icp.industries: 2–5 target customer industries
+- company_snapshot.icp.company_size: employee range of target customers like "50–500 employees"
+- company_snapshot.icp.geography: primary geographic markets targeted
+- company_snapshot.primary_use_cases: 3–5 concrete use cases
+- company_snapshot.core_pain_points_solved: 5 specific pain points, written as problems customers face
+- company_snapshot.differentiators: 3–5 specific advantages over competitors (not generic marketing speak)
+- company_snapshot.positioning: 2–3 sentences on how this company positions itself vs competitors
+- company_snapshot.reddit_safe_description: describe the product as if recommending it to a friend on Reddit — no jargon
+- company_snapshot.red_flags: 3–5 phrases/claims to avoid (hype words, unverifiable superlatives)
+- firmographic_data.industry: the company's own industry/market domain (not the customer's)
+- firmographic_data.founded: year the company was founded; use "Unknown" if not found
+- firmographic_data.employee_range: headcount estimate from job postings, LinkedIn, or Crunchbase signals, e.g. "11–50"; use "Unknown" if not found
+- firmographic_data.funding: funding stage and total raised, e.g. "Series A – $20.5M"; use "Bootstrapped" or "Unknown" if not found
+- firmographic_data.headquarters: city and country, e.g. "San Francisco, USA"; use "Unknown" if not found
+- market_category.primary: primary market category label
+- market_category.secondary: secondary or adjacent market category
 - keyword_map.problem_keywords: 4–5 pain-driven search terms someone types when frustrated
 - keyword_map.workflow_keywords: 4–5 "how do I…" style queries
 - keyword_map.tool_comparison_keywords: 4–5 "X vs Y" or "alternatives to X" queries
